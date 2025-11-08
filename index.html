@@ -471,22 +471,16 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // API Configuration
         const API_CONFIG = {
-            baseURL: 'YOUR_AWS_API_ENDPOINT_HERE',
+            baseURL: window.location.origin,
             endpoints: {
                 prices: '/prices',
                 brands: '/brands',
                 history: '/history',
                 world: '/world-prices'
-            },
-            headers: {
-                'Content-Type': 'application/json',
-                // 'Authorization': 'Bearer YOUR_API_KEY' // ถ้ามี API Key
             }
         };
 
-        // Main Application
         const app = {
             data: {
                 prices: {},
@@ -510,7 +504,6 @@
             },
 
             async fetchAllData() {
-                // ตัวอย่างการเรียก API - ปรับตาม structure จริงของ API
                 const [prices, brands, history, world] = await Promise.all([
                     this.fetchAPI(API_CONFIG.endpoints.prices),
                     this.fetchAPI(API_CONFIG.endpoints.brands),
@@ -525,65 +518,14 @@
             },
 
             async fetchAPI(endpoint) {
-                // ถ้ายังไม่มี API ให้ใช้ mock data
-                if (API_CONFIG.baseURL === 'YOUR_AWS_API_ENDPOINT_HERE') {
-                    return this.getMockData(endpoint);
+                try {
+                    const response = await fetch(`${API_CONFIG.baseURL}${endpoint}`);
+                    if (!response.ok) throw new Error(`API Error: ${response.status}`);
+                    return await response.json();
+                } catch (error) {
+                    console.error(`Failed to fetch ${endpoint}:`, error);
+                    throw error;
                 }
-
-                const response = await fetch(`${API_CONFIG.baseURL}${endpoint}`, {
-                    headers: API_CONFIG.headers
-                });
-
-                if (!response.ok) {
-                    throw new Error(`API Error: ${response.status}`);
-                }
-
-                return await response.json();
-            },
-
-            getMockData(endpoint) {
-                // Mock data สำหรับ demo
-                const mockData = {
-                    '/prices': {
-                        gasoline95: { price: 38.42, change: -0.20 },
-                        gasoline91: { price: 35.67, change: 0.15 },
-                        gasohol95: { price: 36.89, change: 0 },
-                        gasohol91: { price: 34.12, change: -0.30 },
-                        e20: { price: 32.55, change: -0.25 },
-                        e85: { price: 28.90, change: 0.10 },
-                        dieselB7: { price: 32.44, change: -0.18 },
-                        dieselB20: { price: 31.89, change: -0.22 },
-                        updatedAt: new Date().toISOString()
-                    },
-                    '/brands': {
-                        gasoline: [
-                            { brand: 'PTT', g95: 38.42, g91: 35.67 },
-                            { brand: 'Shell', g95: 38.50, g91: 35.75 },
-                            { brand: 'Bangchak', g95: 38.38, g91: 35.62 }
-                        ],
-                        gasohol: [
-                            { brand: 'PTT', gh95: 36.89, gh91: 34.12, e20: 32.55 },
-                            { brand: 'Shell', gh95: 36.95, gh91: 34.18, e20: 32.60 }
-                        ],
-                        diesel: [
-                            { brand: 'PTT', b7: 32.44, b20: 31.89 },
-                            { brand: 'Shell', b7: 32.50, b20: 31.95 }
-                        ]
-                    },
-                    '/history': {
-                        labels: ['1 ต.ค.', '8 ต.ค.', '15 ต.ค.', '22 ต.ค.', '29 ต.ค.', '5 พ.ย.', '6 พ.ย.'],
-                        gasoline95: [39.50, 39.20, 38.90, 38.75, 38.60, 38.62, 38.42],
-                        gasohol95: [37.80, 37.50, 37.25, 37.10, 36.95, 37.09, 36.89],
-                        dieselB7: [33.20, 33.00, 32.80, 32.65, 32.55, 32.62, 32.44]
-                    },
-                    '/world-prices': {
-                        wti: { price: 75.42, change: 1.2 },
-                        brent: { price: 79.15, change: 0.8 },
-                        dubai: { price: 77.80, change: -0.5 },
-                        thb: { price: 34.85, change: 0 }
-                    }
-                };
-                return mockData[endpoint] || {};
             },
 
             renderPriceCards() {
@@ -619,15 +561,13 @@
                     `;
                 }).join('');
 
-                // Update timestamp
                 const date = new Date(prices.updatedAt);
                 document.getElementById('updateTime').textContent = `🕐 อัปเดตล่าสุด: ${date.toLocaleString('th-TH')}`;
             },
 
             showFuelType(type, el) {
-                // remove active from all tabs and mark the clicked element active (if provided)
                 document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
-                if (el && el.classList) el.classList.add('active');
+                if (el) el.classList.add('active');
                 this.renderBrandComparison(type);
             },
 
@@ -638,13 +578,13 @@
                 let headers, rows;
                 if (type === 'gasoline') {
                     headers = ['แบรนด์', 'เบนซิน 95', 'เบนซิน 91', 'ราคาเฉลี่ย'];
-                    rows = brands.map(b => [b.brand, b.g95, b.g91, ((b.g95 + b.g91) / 2).toFixed(2)]);
+                    rows = brands.map(b => [b.brand, b.g95.toFixed(2), b.g91.toFixed(2), ((b.g95 + b.g91) / 2).toFixed(2)]);
                 } else if (type === 'gasohol') {
                     headers = ['แบรนด์', 'แก๊สโซฮอล์ 95', 'แก๊สโซฮอล์ 91', 'E20', 'ราคาเฉลี่ย'];
-                    rows = brands.map(b => [b.brand, b.gh95, b.gh91, b.e20, ((b.gh95 + b.gh91 + b.e20) / 3).toFixed(2)]);
+                    rows = brands.map(b => [b.brand, b.gh95.toFixed(2), b.gh91.toFixed(2), b.e20.toFixed(2), ((b.gh95 + b.gh91 + b.e20) / 3).toFixed(2)]);
                 } else {
                     headers = ['แบรนด์', 'ดีเซล B7', 'ดีเซล B20', 'ราคาเฉลี่ย'];
-                    rows = brands.map(b => [b.brand, b.b7, b.b20, ((b.b7 + b.b20) / 2).toFixed(2)]);
+                    rows = brands.map(b => [b.brand, b.b7.toFixed(2), b.b20.toFixed(2), ((b.b7 + b.b20) / 2).toFixed(2)]);
                 }
 
                 table.innerHTML = `
@@ -715,9 +655,9 @@
                 const container = document.getElementById('worldPricesContainer');
 
                 const items = [
-                    { key: 'wti', flag: '🇺🇸', name: 'WTI Crude', unit: 'ต่อบาร์เรล' },
-                    { key: 'brent', flag: '🇬🇧', name: 'Brent Crude', unit: 'ต่อบาร์เรล' },
-                    { key: 'dubai', flag: '🇦🇪', name: 'Dubai Crude', unit: 'ต่อบาร์เรล' },
+                    { key: 'wti', flag: '🇺🇸', name: 'WTI Crude', unit: 'USD/barrel' },
+                    { key: 'brent', flag: '🇬🇧', name: 'Brent Crude', unit: 'USD/barrel' },
+                    { key: 'dubai', flag: '🇦🇪', name: 'Dubai Crude', unit: 'USD/barrel' },
                     { key: 'thb', flag: '💱', name: 'อัตราแลกเปลี่ยน', unit: 'บาท/ดอลลาร์' }
                 ];
 
@@ -725,12 +665,12 @@
                     const data = worldPrices[item.key];
                     const changeClass = data.change > 0 ? 'price-up' : data.change < 0 ? 'price-down' : 'price-stable';
                     const changeIcon = data.change > 0 ? '▲' : data.change < 0 ? '▼' : '●';
-                    const changeText = data.change !== 0 ? `${data.change > 0 ? '+' : ''}${data.change}%` : '0.0%';
+                    const changeText = `${data.change > 0 ? '+' : ''}${data.change.toFixed(2)}%`;
 
                     return `
                         <div class="world-price-card">
                             <h4>${item.flag} ${item.name}</h4>
-                            <div class="price">${item.key === 'thb' ? data.price.toFixed(2) : ' + data.price.toFixed(2)}</div>
+                            <div class="price">${item.key === 'thb' ? data.price.toFixed(2) : '$' + data.price.toFixed(2)}</div>
                             <div class="currency" style="color: #94a3b8; font-size: 14px; margin-top: 5px;">${item.unit}</div>
                             <span class="price-change ${changeClass}" style="margin-top: 10px;">${changeIcon} ${changeText}</span>
                         </div>
@@ -739,7 +679,6 @@
             },
 
             startAutoRefresh() {
-                // Auto refresh every 5 minutes
                 setInterval(() => {
                     this.fetchAllData().then(() => {
                         this.renderPriceCards();
@@ -747,7 +686,7 @@
                         this.renderChart();
                         this.renderWorldPrices();
                     });
-                }, 300000); // 5 minutes
+                }, 300000);
             },
 
             getCurrentFuelType() {
@@ -774,9 +713,7 @@
                 });
             }
         };
-    
 
-        // Initialize app when page loads
         document.addEventListener('DOMContentLoaded', () => {
             app.init();
         });
